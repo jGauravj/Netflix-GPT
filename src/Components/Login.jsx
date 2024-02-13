@@ -3,13 +3,20 @@ import { Button } from "@radix-ui/themes";
 import BgImg from "../assets/Netflix-bg.jpg";
 import { useRef, useState } from "react";
 import { EyeOpenIcon, EyeNoneIcon } from "@radix-ui/react-icons";
+import {
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signInWithEmailAndPassword,
+} from "firebase/auth";
+import { auth } from "../utils/firebase";
 
 const Login = () => {
-  const [isSignInForm, setIsSignInForm] = useState("");
+  const [isSignInForm, setIsSignInForm] = useState(true);
   const [emailErrorMessage, setEmailErrorMessage] = useState(false);
   const [passwordErrorMessage, setPasswordErrorMessage] = useState(false);
   const [nameErrorMessage, setNameErrorMessage] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [signErrorMessage, setSignErrorMessage] = useState("");
 
   const email = useRef(null);
   const password = useRef(null);
@@ -19,24 +26,131 @@ const Login = () => {
     setIsSignInForm(!isSignInForm);
   };
 
-  const handleButtonClick = () => {};
+  const handlFormSubmit = () => {
+    let isValid = true;
+
+    if (!isSignInForm) {
+      const nameValue = name.current.value.trim();
+      if (!nameValue) {
+        setNameErrorMessage("Please enter your name.");
+        isValid = false;
+      } else if (!validName(nameValue)) {
+        setNameErrorMessage(
+          "Please enter your vaild name.(minimum 3 characters)"
+        );
+      } else {
+        setNameErrorMessage("");
+      }
+    }
+
+    const emailValue = email.current.value.trim();
+    if (!emailValue) {
+      setEmailErrorMessage("Please enter your email address.");
+      isValid = false;
+    } else if (!validEmail(emailValue)) {
+      setEmailErrorMessage("Please enter a valid email address.");
+      isValid = false;
+    } else {
+      setEmailErrorMessage("");
+    }
+
+    const passwordValue = password.current.value.trim();
+    if (!passwordValue) {
+      setPasswordErrorMessage("Please enter your password.");
+      isValid = false;
+    } else if (!validPassword(passwordValue)) {
+      setPasswordErrorMessage(
+        "Please enter a valid password (minimum 8 characters, at least one letter and one number)."
+      );
+      isValid = false;
+    } else {
+      setPasswordErrorMessage("");
+    }
+
+    if (isValid) {
+      console.log("Form submit successfully!");
+    }
+
+    if (!isValid) return;
+
+    // Sign in / Sign up Logic --->
+
+    if (!isSignInForm) {
+      // Sign UP logic -->
+
+      createUserWithEmailAndPassword(auth, emailValue, passwordValue)
+        .then((userCredential) => {
+          // Signed up
+          const user = userCredential.user;
+          console.log(user);
+
+          updateProfile(auth.currentUser, {
+            displayName: name.current.value,
+          });
+          // ...
+        })
+        .catch((error) => {
+          let errorMessage;
+
+          switch (error.code) {
+            case "auth/email-already-in-use":
+              errorMessage = "The email address is already in use.";
+              break;
+
+            case "auth/operation-not-allowed":
+              errorMessage = "Signup operation is not allowed.";
+              break;
+
+            case "auth/network-request-failed":
+              errorMessage =
+                "Network error. Please check your internet connection.";
+              break;
+            default:
+              errorMessage = "An error occurred. Please try again later.";
+          }
+          setSignErrorMessage(errorMessage);
+        });
+    } else {
+      // Sign In logic -->
+      signInWithEmailAndPassword(auth, emailValue, passwordValue)
+        .then((userCredential) => {
+          // Signed in
+          const user = userCredential.user;
+          console.log(user);
+        })
+        .catch((error) => {
+          let errorMessage;
+          switch (error.code) {
+            case "auth/invalid-email":
+              errorMessage = "Invalid email address.";
+              break;
+            case "auth/user-disabled":
+              errorMessage = "Your account has been disabled.";
+              break;
+            case "auth/user-not-found":
+              errorMessage = "User not found.";
+              break;
+            case "auth/wrong-password":
+              errorMessage = "Invalid password.";
+              break;
+            case "auth/invalid-credential":
+              errorMessage =
+                "Invalid credentials. Please check your email and password.";
+              break;
+            // Add more cases for other error codes as needed
+            default:
+              errorMessage = "An error occurred. Please try again later.";
+          }
+          setSignErrorMessage(errorMessage);
+        });
+    }
+  };
 
   // Name validation -->
 
   const validName = (name) => {
     const isValidName = /^[A-Za-z]{3,20}$/.test(name);
     return isValidName;
-  };
-
-  const handleNameBlur = () => {
-    const nameValue = name.current.value;
-    console.log(nameValue);
-    const isName = validName(nameValue);
-    if (!isName) {
-      setNameErrorMessage("Please enter name.");
-    } else {
-      setNameErrorMessage("");
-    }
   };
 
   // Email Validation -->
@@ -47,16 +161,6 @@ const Login = () => {
     return isValidEmail;
   };
 
-  const handleEmailBlur = () => {
-    const emailValue = email.current.value;
-    const isValid = validEmail(emailValue);
-    if (!isValid) {
-      setEmailErrorMessage("Please enter a valid email address.");
-    } else {
-      setEmailErrorMessage("");
-    }
-  };
-
   //  Password Validation  -->
 
   const validPassword = (password) => {
@@ -64,16 +168,6 @@ const Login = () => {
       password
     );
     return isValidPassword;
-  };
-
-  const handlePasswordBlur = () => {
-    const passwordValue = password.current.value;
-    const isValidPass = validPassword(passwordValue);
-    if (!isValidPass) {
-      setPasswordErrorMessage("Please enter a valid Password.");
-    } else {
-      setPasswordErrorMessage("");
-    }
   };
 
   const togglePasswordVisibility = () => {
@@ -100,7 +194,6 @@ const Login = () => {
             <input
               type="text"
               ref={name}
-              onBlur={handleNameBlur}
               placeholder="Name"
               className="px-3 py-2 w-full rounded-md bg-[rgba(50,33,33,0.44)] border border-[rgba(255,255,255,0.18)] text-gray-200 focus:outline  focus:border-2 focus:border-[rgb(229,77,46)]"
             />
@@ -112,7 +205,6 @@ const Login = () => {
             type="text"
             placeholder="Email Address"
             ref={email}
-            onBlur={handleEmailBlur}
             className="px-3 w-full py-2 rounded-md bg-[rgba(50,33,33,0.44)] border border-[rgba(255,255,255,0.18)] text-gray-200 focus:outline  focus:border-2 focus:border-[rgb(229,77,46)]"
           />
         </div>
@@ -121,7 +213,6 @@ const Login = () => {
           <input
             type={showPassword ? "text" : "password"}
             ref={password}
-            onBlur={handlePasswordBlur}
             placeholder="Password"
             className="px-3 py-2 w-full rounded-md bg-[rgba(50,33,33,0.44)] border border-[rgba(255,255,255,0.18)] text-gray-200 focus:outline  focus:border-2 focus:border-[rgb(229,77,46)]"
           />
@@ -132,8 +223,9 @@ const Login = () => {
             {showPassword ? <EyeOpenIcon /> : <EyeNoneIcon />}
           </button>
         </div>
+        <p className="text-xs text-red-600 font-semibold">{signErrorMessage}</p>
 
-        <Button onClick={handleButtonClick}>
+        <Button onClick={handlFormSubmit}>
           {isSignInForm ? "Sign In" : "Sign Up"}
         </Button>
         <p className="text-gray-400">
