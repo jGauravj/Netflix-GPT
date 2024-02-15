@@ -9,6 +9,9 @@ import {
   signInWithEmailAndPassword,
 } from "firebase/auth";
 import { auth } from "../utils/firebase";
+import { useNavigate } from "react-router-dom";
+import { useDispatch } from "react-redux";
+import { addUser } from "../utils/userSlice";
 
 const Login = () => {
   const [isSignInForm, setIsSignInForm] = useState(true);
@@ -17,6 +20,9 @@ const Login = () => {
   const [nameErrorMessage, setNameErrorMessage] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [signErrorMessage, setSignErrorMessage] = useState("");
+
+  const navigate = useNavigate();
+  const dispatch = useDispatch();
 
   const email = useRef(null);
   const password = useRef(null);
@@ -82,7 +88,20 @@ const Login = () => {
         .then((userCredential) => {
           // Signed up
           const user = userCredential.user;
-          console.log(user);
+          updateProfile(user, {
+            displayName: name.current.value,
+            // photoURL: "https://example.com/jane-q-user/profile.jpg",
+          })
+            .then(() => {
+              const { uid, email, displayName } = auth.currentUser;
+              dispatch(
+                addUser({ uid: uid, email: email, displayName: displayName })
+              );
+              navigate("/browse");
+            })
+            .catch((error) => {
+              setSignErrorMessage(error.errorMessage);
+            });
 
           updateProfile(auth.currentUser, {
             displayName: name.current.value,
@@ -96,11 +115,9 @@ const Login = () => {
             case "auth/email-already-in-use":
               errorMessage = "The email address is already in use.";
               break;
-
             case "auth/operation-not-allowed":
               errorMessage = "Signup operation is not allowed.";
               break;
-
             case "auth/network-request-failed":
               errorMessage =
                 "Network error. Please check your internet connection.";
@@ -117,6 +134,7 @@ const Login = () => {
           // Signed in
           const user = userCredential.user;
           console.log(user);
+          navigate("/browse");
         })
         .catch((error) => {
           let errorMessage;
@@ -176,7 +194,10 @@ const Login = () => {
 
   return (
     <div>
-      <Header />
+      <div className=" absolute z-40 overflow-x-hidden w-full">
+        <Header />
+      </div>
+
       <div className=" absolute">
         <img src={BgImg} alt="bg-img" className=" opacity-40" />
       </div>
