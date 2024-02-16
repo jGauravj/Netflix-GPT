@@ -1,10 +1,16 @@
+import useNowPlayingMovies from "../CustomHooks/useNowPlayingMovies";
+import MainContainer from "../mainCotainer/MainContainer";
+import SecondryContainer from "../secondaryContainer/SecondryContainer";
 import Header from "./Header";
 
 const Browse = () => {
+  useNowPlayingMovies();
+
   return (
     <div>
       <Header />
-      <h1></h1>
+      <MainContainer />
+      <SecondryContainer />
     </div>
   );
 };
